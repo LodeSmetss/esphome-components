@@ -53,29 +53,30 @@ std::string ButtonHandlerButton::resolve_combo_label(const std::vector<uint16_t>
   return oss.str();
 }
 
-void ButtonHandlerButton::fire_event(ButtonEventType event_type) {
+void ButtonHandlerButton::fire_event(ButtonEventType event_type, const std::string &button_id,
+                                      const std::string &label) {
   switch (event_type) {
     case ButtonEventType::SINGLE:
-      this->single_trigger_.trigger();
+      this->single_trigger_.trigger(button_id, label);
       break;
     case ButtonEventType::DOUBLE:
-      this->double_trigger_.trigger();
+      this->double_trigger_.trigger(button_id, label);
       break;
     case ButtonEventType::LONG_PRESS:
-      this->long_press_trigger_.trigger();
+      this->long_press_trigger_.trigger(button_id, label);
       break;
     case ButtonEventType::LONG_RELEASE:
-      this->long_release_trigger_.trigger();
+      this->long_release_trigger_.trigger(button_id, label);
       break;
     case ButtonEventType::COMBO:
-      this->combo_trigger_.trigger();
+      this->combo_trigger_.trigger(button_id, label);
       break;
     case ButtonEventType::UNKNOWN:
     default:
       break;
   }
 
-  this->event_trigger_.trigger();
+  this->event_trigger_.trigger(button_id, label);
 }
 
 void ButtonHandler::setup() {
@@ -239,7 +240,7 @@ void ButtonHandler::process_button_groups_(uint32_t now_ms) {
       const auto combo = button->resolve_combo_label(addresses);
 
       ESP_LOGI(TAG, "Button '%s' event state=%d combo=%s", button->button_id().c_str(), state, combo.c_str());
-      button->fire_event(event_type);
+      button->fire_event(event_type, button->button_id(), combo);
     }
   }
 }

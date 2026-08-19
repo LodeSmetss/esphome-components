@@ -16,12 +16,12 @@ namespace button_handler {
 
 using custom_modbus_tcp::CustomModbusTcp;
 
-class SingleTrigger : public Trigger<> {};
-class DoubleTrigger : public Trigger<> {};
-class LongPressTrigger : public Trigger<> {};
-class LongReleaseTrigger : public Trigger<> {};
-class ComboTrigger : public Trigger<> {};
-class EventTrigger : public Trigger<> {};
+class SingleTrigger : public Trigger<std::string, std::string> {};
+class DoubleTrigger : public Trigger<std::string, std::string> {};
+class LongPressTrigger : public Trigger<std::string, std::string> {};
+class LongReleaseTrigger : public Trigger<std::string, std::string> {};
+class ComboTrigger : public Trigger<std::string, std::string> {};
+class EventTrigger : public Trigger<std::string, std::string> {};
 
 enum class ButtonEventType {
   SINGLE,
@@ -64,7 +64,7 @@ class ButtonHandlerButton {
   bool timing_active{false};
   uint32_t timing_start_ms{0};
 
-  void fire_event(ButtonEventType event_type);
+  void fire_event(ButtonEventType event_type, const std::string &button_id, const std::string &label);
 
  protected:
   std::string button_id_;

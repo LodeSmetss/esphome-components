@@ -34,12 +34,12 @@ ButtonHandler = button_handler_ns.class_("ButtonHandler", cg.Component)
 ButtonHandlerButton = button_handler_ns.class_("ButtonHandlerButton")
 CustomModbusTcp = custom_modbus_tcp_ns.class_("CustomModbusTcp")
 
-SingleTrigger = button_handler_ns.class_("SingleTrigger", automation.Trigger.template())
-DoubleTrigger = button_handler_ns.class_("DoubleTrigger", automation.Trigger.template())
-LongPressTrigger = button_handler_ns.class_("LongPressTrigger", automation.Trigger.template())
-LongReleaseTrigger = button_handler_ns.class_("LongReleaseTrigger", automation.Trigger.template())
-ComboTrigger = button_handler_ns.class_("ComboTrigger", automation.Trigger.template())
-EventTrigger = button_handler_ns.class_("EventTrigger", automation.Trigger.template())
+SingleTrigger = button_handler_ns.class_("SingleTrigger", automation.Trigger.template(cg.std_string, cg.std_string))
+DoubleTrigger = button_handler_ns.class_("DoubleTrigger", automation.Trigger.template(cg.std_string, cg.std_string))
+LongPressTrigger = button_handler_ns.class_("LongPressTrigger", automation.Trigger.template(cg.std_string, cg.std_string))
+LongReleaseTrigger = button_handler_ns.class_("LongReleaseTrigger", automation.Trigger.template(cg.std_string, cg.std_string))
+ComboTrigger = button_handler_ns.class_("ComboTrigger", automation.Trigger.template(cg.std_string, cg.std_string))
+EventTrigger = button_handler_ns.class_("EventTrigger", automation.Trigger.template(cg.std_string, cg.std_string))
 
 TIMINGS_SCHEMA = cv.Schema(
     {
@@ -112,15 +112,17 @@ async def to_code(config):
 
         cg.add(var.add_button(btn))
 
+        trigger_args = [(cg.std_string, "button_id"), (cg.std_string, "label")]
+
         if CONF_ON_SINGLE in button_conf:
-            await automation.build_automation(btn.get_single_trigger(), [], button_conf[CONF_ON_SINGLE])
+            await automation.build_automation(btn.get_single_trigger(), trigger_args, button_conf[CONF_ON_SINGLE])
         if CONF_ON_DOUBLE in button_conf:
-            await automation.build_automation(btn.get_double_trigger(), [], button_conf[CONF_ON_DOUBLE])
+            await automation.build_automation(btn.get_double_trigger(), trigger_args, button_conf[CONF_ON_DOUBLE])
         if CONF_ON_LONG_PRESS in button_conf:
-            await automation.build_automation(btn.get_long_press_trigger(), [], button_conf[CONF_ON_LONG_PRESS])
+            await automation.build_automation(btn.get_long_press_trigger(), trigger_args, button_conf[CONF_ON_LONG_PRESS])
         if CONF_ON_LONG_RELEASE in button_conf:
-            await automation.build_automation(btn.get_long_release_trigger(), [], button_conf[CONF_ON_LONG_RELEASE])
+            await automation.build_automation(btn.get_long_release_trigger(), trigger_args, button_conf[CONF_ON_LONG_RELEASE])
         if CONF_ON_COMBO in button_conf:
-            await automation.build_automation(btn.get_combo_trigger(), [], button_conf[CONF_ON_COMBO])
+            await automation.build_automation(btn.get_combo_trigger(), trigger_args, button_conf[CONF_ON_COMBO])
         if CONF_ON_EVENT in button_conf:
-            await automation.build_automation(btn.get_event_trigger(), [], button_conf[CONF_ON_EVENT])
+            await automation.build_automation(btn.get_event_trigger(), trigger_args, button_conf[CONF_ON_EVENT])
