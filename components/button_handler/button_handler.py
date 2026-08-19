@@ -39,7 +39,7 @@ DoubleTrigger = button_handler_ns.class_("DoubleTrigger", automation.Trigger.tem
 LongPressTrigger = button_handler_ns.class_("LongPressTrigger", automation.Trigger.template(cg.std_string, cg.std_string))
 LongReleaseTrigger = button_handler_ns.class_("LongReleaseTrigger", automation.Trigger.template(cg.std_string, cg.std_string))
 ComboTrigger = button_handler_ns.class_("ComboTrigger", automation.Trigger.template(cg.std_string, cg.std_string))
-EventTrigger = button_handler_ns.class_("EventTrigger", automation.Trigger.template(cg.std_string, cg.std_string))
+EventTrigger = button_handler_ns.class_("EventTrigger", automation.Trigger.template(cg.std_string, cg.std_string, cg.std_string))
 
 TIMINGS_SCHEMA = cv.Schema(
     {
@@ -113,6 +113,7 @@ async def to_code(config):
         cg.add(var.add_button(btn))
 
         trigger_args = [(cg.std_string, "button_id"), (cg.std_string, "label")]
+        event_trigger_args = [(cg.std_string, "button_id"), (cg.std_string, "type"), (cg.std_string, "label")]
 
         if CONF_ON_SINGLE in button_conf:
             await automation.build_automation(btn.get_single_trigger(), trigger_args, button_conf[CONF_ON_SINGLE])
@@ -125,4 +126,4 @@ async def to_code(config):
         if CONF_ON_COMBO in button_conf:
             await automation.build_automation(btn.get_combo_trigger(), trigger_args, button_conf[CONF_ON_COMBO])
         if CONF_ON_EVENT in button_conf:
-            await automation.build_automation(btn.get_event_trigger(), trigger_args, button_conf[CONF_ON_EVENT])
+            await automation.build_automation(btn.get_event_trigger(), event_trigger_args, button_conf[CONF_ON_EVENT])

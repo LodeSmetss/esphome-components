@@ -23,6 +23,24 @@ static std::string join_labels(const std::vector<std::string> &parts) {
   return oss.str();
 }
 
+static std::string event_type_to_string(ButtonEventType event_type) {
+  switch (event_type) {
+    case ButtonEventType::SINGLE:
+      return "single";
+    case ButtonEventType::DOUBLE:
+      return "double";
+    case ButtonEventType::LONG_PRESS:
+      return "long_press";
+    case ButtonEventType::LONG_RELEASE:
+      return "long_release";
+    case ButtonEventType::COMBO:
+      return "combo";
+    case ButtonEventType::UNKNOWN:
+    default:
+      return "unknown";
+  }
+}
+
 std::string ButtonHandlerButton::resolve_combo_label(const std::vector<uint16_t> &pressed_addresses) const {
   if (pressed_addresses.empty()) {
     return "";
@@ -76,7 +94,7 @@ void ButtonHandlerButton::fire_event(ButtonEventType event_type, const std::stri
       break;
   }
 
-  this->event_trigger_.trigger(button_id, label);
+  this->event_trigger_.trigger(button_id, event_type_to_string(event_type), label);
 }
 
 void ButtonHandler::setup() {

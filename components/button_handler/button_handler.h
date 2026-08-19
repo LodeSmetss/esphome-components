@@ -21,7 +21,7 @@ class DoubleTrigger : public Trigger<std::string, std::string> {};
 class LongPressTrigger : public Trigger<std::string, std::string> {};
 class LongReleaseTrigger : public Trigger<std::string, std::string> {};
 class ComboTrigger : public Trigger<std::string, std::string> {};
-class EventTrigger : public Trigger<std::string, std::string> {};
+class EventTrigger : public Trigger<std::string, std::string, std::string> {};
 
 enum class ButtonEventType {
   SINGLE,
