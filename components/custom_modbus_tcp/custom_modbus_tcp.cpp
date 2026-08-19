@@ -2,6 +2,7 @@
 
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
+#include "esphome/components/network/util.h"   // for network::is_connected()
 
 #include <cerrno>
 #include <cstring>
@@ -25,30 +26,41 @@ static const char *const TAG = "custom_modbus_tcp";
 
 static void close_socket_fd(int &fd) {
   if (fd >= 0) {
-#if defined(ESP32) || defined(ESP8266)
     ::close(fd);
-#else
-    ::close(fd);
-#endif
     fd = -1;
   }
 }
 
 void CustomModbusTcp::setup() {
   ESP_LOGI(TAG, "Setting up Custom Modbus TCP client");
-  this->ensure_connected_();
+  // Do NOT call ensure_connected_() here. On boot, lwIP's TCP/IP task and its
+  // internal semaphores may not be initialized yet, so getaddrinfo() can crash
+  // (sys_mutex_lock -> xQueueSemaphoreTake assert -> abort). Defer the first
+  // connection attempt to loop(), once the network stack is actually up.
 }
 
 void CustomModbusTcp::loop() {
+  const uint32_t now = millis();
+
   if (this->socket_fd_ < 0) {
+    // Not connected yet (or lost connection). Only attempt if the network
+    // is actually ready, and don't hammer it every loop iteration.
+    if (!network::is_connected()) {
+      return;
+    }
+    if (now - this->last_connect_attempt_ms_ < this->retry_backoff_ms_) {
+      return;
+    }
+    this->last_connect_attempt_ms_ = now;
+    this->ensure_connected_();
     return;
   }
 
-  const uint32_t now = millis();
   if (this->keepalive_ms_ > 0 && (now - this->last_io_ms_) > this->keepalive_ms_) {
     // Keepalive is implemented as a reconnect boundary to avoid stale sockets.
     ESP_LOGW(TAG, "Keepalive timeout reached, reconnecting socket");
     this->disconnect_();
+    this->last_connect_attempt_ms_ = now;
     this->ensure_connected_();
   }
 }
