@@ -71,6 +71,7 @@ class CustomModbusTcp : public Component {
   int socket_fd_{-1};
   uint16_t transaction_id_{1};
   uint32_t last_io_ms_{0};
+  uint32_t last_connect_attempt_ms_{0};
   ModbusReadError last_error_{ModbusReadError::OK};
 
   uint32_t read_ok_count_{0};
