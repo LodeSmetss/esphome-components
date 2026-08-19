@@ -3,13 +3,16 @@
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
+#include <cerrno>
 #include <cstring>
 
 #if defined(ESP32) || defined(ESP8266)
+#include <fcntl.h>
 #include <lwip/netdb.h>
 #include <lwip/sockets.h>
 #else
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -103,7 +106,36 @@ bool CustomModbusTcp::ensure_connected_() {
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char *>(&tv), sizeof(tv));
     setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char *>(&tv), sizeof(tv));
 
-    if (connect(fd, rp->ai_addr, rp->ai_addrlen) == 0) {
+    // SO_RCVTIMEO/SO_SNDTIMEO do not reliably bound connect() itself on lwIP, which can
+    // otherwise block far longer than the ESP32 task watchdog window and reset the device
+    // before it ever reaches Wi-Fi/API. Force a non-blocking connect and wait for completion
+    // with select(), strictly bounded by connect_timeout_ms_.
+    const int flags = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+
+    const int connect_ret = connect(fd, rp->ai_addr, rp->ai_addrlen);
+    bool connected = connect_ret == 0;
+    if (connect_ret < 0 && (errno == EINPROGRESS || errno == EWOULDBLOCK)) {
+      fd_set write_fds;
+      FD_ZERO(&write_fds);
+      FD_SET(fd, &write_fds);
+
+      struct timeval select_tv;
+      select_tv.tv_sec = static_cast<time_t>(this->connect_timeout_ms_ / 1000U);
+      select_tv.tv_usec = static_cast<suseconds_t>((this->connect_timeout_ms_ % 1000U) * 1000U);
+
+      const int sel = select(fd + 1, nullptr, &write_fds, nullptr, &select_tv);
+      if (sel > 0 && FD_ISSET(fd, &write_fds)) {
+        int so_error = 0;
+        socklen_t so_len = sizeof(so_error);
+        getsockopt(fd, SOL_SOCKET, SO_ERROR, reinterpret_cast<char *>(&so_error), &so_len);
+        connected = so_error == 0;
+      }
+    }
+
+    fcntl(fd, F_SETFL, flags);
+
+    if (connected) {
       this->socket_fd_ = fd;
       this->last_io_ms_ = millis();
       this->last_error_ = ModbusReadError::OK;
