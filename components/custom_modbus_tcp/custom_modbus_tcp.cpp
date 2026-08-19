@@ -322,6 +322,139 @@ ModbusReadResult CustomModbusTcp::read_registers_(uint8_t function_code, uint16_
   return result;
 }
 
+ModbusBitReadResult CustomModbusTcp::read_bits_(uint8_t function_code, uint16_t start_address, uint16_t count) {
+  ModbusBitReadResult result;
+  result.timestamp_ms = millis();
+
+  // Modbus spec caps discrete inputs / coils at 2000 per request (vs 125 for registers).
+  if (count == 0 || count > 2000) {
+    result.error_code = ModbusReadError::BAD_ARGUMENT;
+    this->last_error_ = result.error_code;
+    return result;
+  }
+
+  for (uint8_t attempt = 0; attempt <= this->retry_count_; attempt++) {
+    const uint32_t start_ms = millis();
+
+    if (!this->ensure_connected_()) {
+      result.error_code = ModbusReadError::CONNECT_FAILED;
+      this->last_error_ = result.error_code;
+      if (attempt < this->retry_count_) {
+        delay(this->retry_backoff_ms_);
+      }
+      continue;
+    }
+
+    uint8_t request[12];
+    const uint16_t tx_id = this->transaction_id_++;
+
+    request[0] = static_cast<uint8_t>((tx_id >> 8) & 0xFF);
+    request[1] = static_cast<uint8_t>(tx_id & 0xFF);
+    request[2] = 0x00;
+    request[3] = 0x00;
+    request[4] = 0x00;
+    request[5] = 0x06;
+    request[6] = this->unit_id_;
+    request[7] = function_code;
+    request[8] = static_cast<uint8_t>((start_address >> 8) & 0xFF);
+    request[9] = static_cast<uint8_t>(start_address & 0xFF);
+    request[10] = static_cast<uint8_t>((count >> 8) & 0xFF);
+    request[11] = static_cast<uint8_t>(count & 0xFF);
+
+    if (!this->send_all_(request, sizeof(request))) {
+      result.error_code = ModbusReadError::SEND_FAILED;
+      this->last_error_ = result.error_code;
+      this->disconnect_();
+      if (attempt < this->retry_count_) {
+        delay(this->retry_backoff_ms_);
+      }
+      continue;
+    }
+
+    uint8_t header[7];
+    if (!this->recv_all_(header, sizeof(header))) {
+      result.error_code = ModbusReadError::RECEIVE_FAILED;
+      this->last_error_ = result.error_code;
+      this->disconnect_();
+      if (attempt < this->retry_count_) {
+        delay(this->retry_backoff_ms_);
+      }
+      continue;
+    }
+
+    const uint16_t protocol_id = (static_cast<uint16_t>(header[2]) << 8) | header[3];
+    const uint16_t length = (static_cast<uint16_t>(header[4]) << 8) | header[5];
+    if (protocol_id != 0 || length < 2) {
+      result.error_code = ModbusReadError::PROTOCOL_ERROR;
+      this->last_error_ = result.error_code;
+      this->disconnect_();
+      if (attempt < this->retry_count_) {
+        delay(this->retry_backoff_ms_);
+      }
+      continue;
+    }
+
+    std::vector<uint8_t> pdu(length - 1, 0);
+    if (!this->recv_all_(pdu.data(), pdu.size())) {
+      result.error_code = ModbusReadError::RECEIVE_FAILED;
+      this->last_error_ = result.error_code;
+      this->disconnect_();
+      if (attempt < this->retry_count_) {
+        delay(this->retry_backoff_ms_);
+      }
+      continue;
+    }
+
+    const uint8_t response_fc = pdu[0];
+    if ((response_fc & 0x80U) != 0U) {
+      result.error_code = ModbusReadError::EXCEPTION_RESPONSE;
+      this->last_error_ = result.error_code;
+      this->read_fail_count_++;
+      return result;
+    }
+
+    if (response_fc != function_code || pdu.size() < 2) {
+      result.error_code = ModbusReadError::PROTOCOL_ERROR;
+      this->last_error_ = result.error_code;
+      this->disconnect_();
+      if (attempt < this->retry_count_) {
+        delay(this->retry_backoff_ms_);
+      }
+      continue;
+    }
+
+    const uint8_t byte_count = pdu[1];
+    const uint8_t expected_byte_count = static_cast<uint8_t>((count + 7) / 8);
+    if (byte_count != expected_byte_count || pdu.size() != static_cast<size_t>(2 + byte_count)) {
+      result.error_code = ModbusReadError::PROTOCOL_ERROR;
+      this->last_error_ = result.error_code;
+      this->disconnect_();
+      if (attempt < this->retry_count_) {
+        delay(this->retry_backoff_ms_);
+      }
+      continue;
+    }
+
+    result.bits.resize(count);
+    for (uint16_t i = 0; i < count; i++) {
+      const size_t byte_index = 2 + (i / 8);
+      const uint8_t bit_index = static_cast<uint8_t>(i % 8);
+      result.bits[i] = ((pdu[byte_index] >> bit_index) & 0x01U) != 0U;
+    }
+
+    this->last_io_ms_ = millis();
+    result.ok = true;
+    result.error_code = ModbusReadError::OK;
+    result.latency_ms = millis() - start_ms;
+    this->last_error_ = result.error_code;
+    this->read_ok_count_++;
+    return result;
+  }
+
+  this->read_fail_count_++;
+  return result;
+}
+
 bool CustomModbusTcp::read_holding_registers(uint16_t start_address, uint16_t count,
                                              std::vector<uint16_t> &out_registers) {
   auto res = this->read_holding_registers_result(start_address, count);
@@ -342,6 +475,16 @@ ModbusReadResult CustomModbusTcp::read_holding_registers_result(uint16_t start_a
 
 ModbusReadResult CustomModbusTcp::read_input_registers_result(uint16_t start_address, uint16_t count) {
   return this->read_registers_(0x04, start_address, count);
+}
+
+bool CustomModbusTcp::read_discrete_inputs(uint16_t start_address, uint16_t count, std::vector<bool> &out_bits) {
+  auto res = this->read_discrete_inputs_result(start_address, count);
+  out_bits = std::move(res.bits);
+  return res.ok;
+}
+
+ModbusBitReadResult CustomModbusTcp::read_discrete_inputs_result(uint16_t start_address, uint16_t count) {
+  return this->read_bits_(0x02, start_address, count);
 }
 
 }  // namespace custom_modbus_tcp

@@ -101,8 +101,9 @@ class ButtonHandler : public Component {
 
  protected:
   bool should_poll_(uint32_t now_ms) const;
-  bool read_registers_(std::vector<uint16_t> &registers);
-  void update_input_states_(const std::vector<uint16_t> &registers, uint32_t now_ms);
+  bool read_word_registers_(std::vector<uint16_t> &registers);
+  bool read_discrete_(std::vector<bool> &bits);
+  void update_input_states_(const std::vector<bool> &io_list, uint32_t now_ms);
   void process_button_groups_(uint32_t now_ms);
 
   void fire_event_(const std::string &button_id, ButtonEventType event_type, const std::string &label);

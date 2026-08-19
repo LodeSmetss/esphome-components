@@ -74,7 +74,7 @@ CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(ButtonHandler),
         cv.Required(CONF_MODBUS_TCP_ID): cv.use_id(CustomModbusTcp),
-        cv.Optional(CONF_REGISTER_TYPE, default="holding"): cv.one_of("holding", "input", lower=True),
+        cv.Optional(CONF_REGISTER_TYPE, default="holding"): cv.one_of("holding", "input", "discrete", lower=True),
         cv.Optional(CONF_REGISTER_START, default=0): cv.int_range(min=0, max=65535),
         cv.Optional(CONF_REGISTER_COUNT, default=7): cv.int_range(min=1, max=125),
         cv.Optional(CONF_POLL_INTERVAL, default="10ms"): cv.positive_time_period_milliseconds,

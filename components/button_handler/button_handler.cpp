@@ -124,27 +124,36 @@ void ButtonHandler::dump_config() {
 
 bool ButtonHandler::should_poll_(uint32_t now_ms) const { return (now_ms - this->last_poll_ms_) >= this->poll_interval_ms_; }
 
-bool ButtonHandler::read_registers_(std::vector<uint16_t> &registers) {
+bool ButtonHandler::read_word_registers_(std::vector<uint16_t> &registers) {
   if (this->modbus_tcp_ == nullptr) {
     return false;
   }
 
   if (this->register_type_ == "input") {
-    return this->modbus_tcp_->read_input_registers(this->register_start_, this->register_count_, registers);
+    return this->modbus_tcp_->read_input_registers(
+        this->register_start_,
+        this->register_count_,
+        registers);
   }
 
-  return this->modbus_tcp_->read_holding_registers(this->register_start_, this->register_count_, registers);
+  return this->modbus_tcp_->read_holding_registers(
+      this->register_start_,
+      this->register_count_,
+      registers);
 }
 
-void ButtonHandler::update_input_states_(const std::vector<uint16_t> &registers, uint32_t now_ms) {
-  std::vector<bool> io_list;
-  io_list.reserve(registers.size() * 16);
-  for (const auto reg : registers) {
-    for (uint8_t bit = 0; bit < 16; bit++) {
-      io_list.push_back(((reg >> bit) & 0x1U) != 0U);
-    }
+bool ButtonHandler::read_discrete_(std::vector<bool> &bits) {
+  if (this->modbus_tcp_ == nullptr) {
+    return false;
   }
 
+  return this->modbus_tcp_->read_discrete_inputs(
+      this->register_start_,
+      this->register_count_,
+      bits);
+}
+
+void ButtonHandler::update_input_states_(const std::vector<bool> &io_list, uint32_t now_ms) {
   for (size_t i = 0; i < io_list.size(); i++) {
     const uint16_t address = static_cast<uint16_t>(i + 1);
     auto &st = this->io_states_[address];
@@ -287,8 +296,26 @@ void ButtonHandler::loop() {
     return;
   }
 
-  std::vector<uint16_t> registers;
-  const bool ok = this->read_registers_(registers);
+  std::vector<bool> io_list;
+  bool ok;
+
+  if (this->register_type_ == "discrete") {
+    // Discrete inputs already come back as one bool per address; no unpacking needed.
+    ok = this->read_discrete_(io_list);
+  } else {
+    // Holding/input registers pack 16 digital I/O points per 16-bit word.
+    std::vector<uint16_t> registers;
+    ok = this->read_word_registers_(registers);
+    if (ok) {
+      io_list.reserve(registers.size() * 16);
+      for (const auto reg : registers) {
+        for (uint8_t bit = 0; bit < 16; bit++) {
+          io_list.push_back(((reg >> bit) & 0x1U) != 0U);
+        }
+      }
+    }
+  }
+
   if (!ok) {
     const bool in_cooldown = (now - this->last_invalid_ms_) < this->invalid_cooldown_ms_;
     if (!in_cooldown) {
@@ -298,7 +325,7 @@ void ButtonHandler::loop() {
     return;
   }
 
-  this->update_input_states_(registers, now);
+  this->update_input_states_(io_list, now);
   this->process_button_groups_(now);
 }
 

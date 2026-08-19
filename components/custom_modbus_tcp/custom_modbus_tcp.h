@@ -28,6 +28,17 @@ struct ModbusReadResult {
   uint32_t timestamp_ms{0};
 };
 
+// Result type for bit-oriented reads (discrete inputs, coils). Modbus packs
+// these 8 bits per byte, LSB first, so they get their own result/parse path
+// rather than reusing ModbusReadResult's 16-bit register layout.
+struct ModbusBitReadResult {
+  bool ok{false};
+  std::vector<bool> bits{};
+  ModbusReadError error_code{ModbusReadError::OK};
+  uint32_t latency_ms{0};
+  uint32_t timestamp_ms{0};
+};
+
 class CustomModbusTcp : public Component {
  public:
   void setup() override;
@@ -51,11 +62,15 @@ class CustomModbusTcp : public Component {
   ModbusReadResult read_holding_registers_result(uint16_t start_address, uint16_t count);
   ModbusReadResult read_input_registers_result(uint16_t start_address, uint16_t count);
 
+  bool read_discrete_inputs(uint16_t start_address, uint16_t count, std::vector<bool> &out_bits);
+  ModbusBitReadResult read_discrete_inputs_result(uint16_t start_address, uint16_t count);
+
  protected:
   bool ensure_connected_();
   void disconnect_();
 
   ModbusReadResult read_registers_(uint8_t function_code, uint16_t start_address, uint16_t count);
+  ModbusBitReadResult read_bits_(uint8_t function_code, uint16_t start_address, uint16_t count);
   bool send_all_(const uint8_t *data, size_t len);
   bool recv_all_(uint8_t *data, size_t len);
 
