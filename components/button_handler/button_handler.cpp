@@ -97,6 +97,15 @@ void ButtonHandlerButton::fire_event(ButtonEventType event_type, const std::stri
   this->event_trigger_.trigger(button_id, event_type_to_string(event_type), label);
 }
 
+void ButtonHandler::fire_event_(const std::string &button_id,
+                                ButtonEventType event_type,
+                                const std::string &label) {
+  this->event_trigger_.trigger(
+      button_id,
+      event_type_to_string(event_type),
+      label);
+}
+
 void ButtonHandler::setup() {
   ESP_LOGI(TAG, "Setting up ButtonHandler");
   this->last_poll_ms_ = millis();
@@ -259,6 +268,9 @@ void ButtonHandler::process_button_groups_(uint32_t now_ms) {
 
       ESP_LOGI(TAG, "Button '%s' event state=%d combo=%s", button->button_id().c_str(), state, combo.c_str());
       button->fire_event(event_type, button->button_id(), combo);
+      
+      //global trigger
+      this->fire_event_(button->button_id(), event_type, combo);
     }
   }
 }

@@ -79,6 +79,10 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_REGISTER_COUNT, default=7): cv.int_range(min=1, max=125),
         cv.Optional(CONF_POLL_INTERVAL, default="10ms"): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_TIMINGS, default={}): TIMINGS_SCHEMA,
+
+        # Automation called for events from every button
+        cv.Optional(CONF_ON_EVENT): automation.validate_automation(single=True),
+
         cv.Required(CONF_BUTTONS): cv.ensure_list(BUTTON_SCHEMA),
     }
 ).extend(cv.COMPONENT_SCHEMA)
@@ -101,6 +105,20 @@ async def to_code(config):
     cg.add(var.set_long_press_ms(timings[CONF_LONG_PRESS].total_milliseconds))
     cg.add(var.set_collect_window_ms(timings[CONF_COLLECT_WINDOW].total_milliseconds))
     cg.add(var.set_invalid_cooldown_ms(timings[CONF_INVALID_COOLDOWN].total_milliseconds))
+
+    # Global event handler: receives events from all configured buttons
+    event_trigger_args = [
+        (cg.std_string, "button_id"),
+        (cg.std_string, "type"),
+        (cg.std_string, "label"),
+    ]
+
+    if CONF_ON_EVENT in config:
+        await automation.build_automation(
+            var.get_event_trigger(),
+            event_trigger_args,
+            config[CONF_ON_EVENT],
+        )
 
     for button_conf in config[CONF_BUTTONS]:
         btn = cg.new_Pvariable(button_conf[CONF_ID])

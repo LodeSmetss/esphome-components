@@ -97,12 +97,15 @@ class ButtonHandler : public Component {
   void set_invalid_cooldown_ms(uint32_t invalid_cooldown_ms) { this->invalid_cooldown_ms_ = invalid_cooldown_ms; }
 
   void add_button(ButtonHandlerButton *button) { this->buttons_.push_back(button); }
+  EventTrigger *get_event_trigger() { return &this->event_trigger_; }
 
  protected:
   bool should_poll_(uint32_t now_ms) const;
   bool read_registers_(std::vector<uint16_t> &registers);
   void update_input_states_(const std::vector<uint16_t> &registers, uint32_t now_ms);
   void process_button_groups_(uint32_t now_ms);
+
+  void fire_event_(const std::string &button_id, ButtonEventType event_type, const std::string &label);
 
   ButtonEventType map_state_to_event_(int state) const;
 
@@ -122,6 +125,8 @@ class ButtonHandler : public Component {
 
   std::vector<ButtonHandlerButton *> buttons_;
   std::unordered_map<uint16_t, InputState> io_states_;
+
+  EventTrigger event_trigger_;
 };
 
 }  // namespace button_handler
