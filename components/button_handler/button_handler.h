@@ -19,6 +19,7 @@ using custom_modbus_tcp::CustomModbusTcp;
 class SingleTrigger : public Trigger<std::string, std::string> {};
 class DoubleTrigger : public Trigger<std::string, std::string> {};
 class LongPressTrigger : public Trigger<std::string, std::string> {};
+class DoubleLongPressTrigger : public Trigger<std::string, std::string> {};
 class LongReleaseTrigger : public Trigger<std::string, std::string> {};
 class ComboTrigger : public Trigger<std::string, std::string> {};
 class EventTrigger : public Trigger<std::string, std::string, std::string> {};
