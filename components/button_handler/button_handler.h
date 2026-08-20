@@ -27,6 +27,7 @@ enum class ButtonEventType {
   SINGLE,
   DOUBLE,
   LONG_PRESS,
+  DOUBLE_LONG_PRESS,
   LONG_RELEASE,
   COMBO,
   UNKNOWN,
@@ -54,6 +55,7 @@ class ButtonHandlerButton {
   SingleTrigger *get_single_trigger() { return &this->single_trigger_; }
   DoubleTrigger *get_double_trigger() { return &this->double_trigger_; }
   LongPressTrigger *get_long_press_trigger() { return &this->long_press_trigger_; }
+  DoubleLongPressTrigger *get_double_long_press_trigger() { return &this->double_long_press_trigger_; }
   LongReleaseTrigger *get_long_release_trigger() { return &this->long_release_trigger_; }
   ComboTrigger *get_combo_trigger() { return &this->combo_trigger_; }
   EventTrigger *get_event_trigger() { return &this->event_trigger_; }
@@ -74,6 +76,7 @@ class ButtonHandlerButton {
   SingleTrigger single_trigger_;
   DoubleTrigger double_trigger_;
   LongPressTrigger long_press_trigger_;
+  DoubleLongPressTrigger double_long_press_trigger_;
   LongReleaseTrigger long_release_trigger_;
   ComboTrigger combo_trigger_;
   EventTrigger event_trigger_;

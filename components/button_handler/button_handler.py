@@ -23,6 +23,7 @@ CONF_INVALID_COOLDOWN = "invalid_cooldown"
 CONF_ON_SINGLE = "on_single"
 CONF_ON_DOUBLE = "on_double"
 CONF_ON_LONG_PRESS = "on_long_press"
+CONF_ON_DOUBLE_LONG_PRESS = "on_double_long_press"
 CONF_ON_LONG_RELEASE = "on_long_release"
 CONF_ON_COMBO = "on_combo"
 CONF_ON_EVENT = "on_event"
@@ -64,6 +65,7 @@ BUTTON_SCHEMA = cv.Schema(
         cv.Optional(CONF_ON_SINGLE): automation.validate_automation(single=True),
         cv.Optional(CONF_ON_DOUBLE): automation.validate_automation(single=True),
         cv.Optional(CONF_ON_LONG_PRESS): automation.validate_automation(single=True),
+        cv.Optional(CONF_ON_DOUBLE_LONG_PRESS): automation.validate_automation(single=True),
         cv.Optional(CONF_ON_LONG_RELEASE): automation.validate_automation(single=True),
         cv.Optional(CONF_ON_COMBO): automation.validate_automation(single=True),
         cv.Optional(CONF_ON_EVENT): automation.validate_automation(single=True),
@@ -139,6 +141,8 @@ async def to_code(config):
             await automation.build_automation(btn.get_double_trigger(), trigger_args, button_conf[CONF_ON_DOUBLE])
         if CONF_ON_LONG_PRESS in button_conf:
             await automation.build_automation(btn.get_long_press_trigger(), trigger_args, button_conf[CONF_ON_LONG_PRESS])
+        if CONF_ON_DOUBLE_LONG_PRESS in button_conf:
+            await automation.build_automation(btn.get_double_long_press_trigger(), trigger_args, button_conf[CONF_ON_DOUBLE_LONG_PRESS])
         if CONF_ON_LONG_RELEASE in button_conf:
             await automation.build_automation(btn.get_long_release_trigger(), trigger_args, button_conf[CONF_ON_LONG_RELEASE])
         if CONF_ON_COMBO in button_conf:

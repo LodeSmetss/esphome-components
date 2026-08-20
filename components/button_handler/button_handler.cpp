@@ -31,6 +31,8 @@ static std::string event_type_to_string(ButtonEventType event_type) {
       return "double";
     case ButtonEventType::LONG_PRESS:
       return "long_press";
+    case ButtonEventType::DOUBLE_LONG_PRESS:
+      return "double_long_press";
     case ButtonEventType::LONG_RELEASE:
       return "long_release";
     case ButtonEventType::COMBO:
@@ -82,6 +84,9 @@ void ButtonHandlerButton::fire_event(ButtonEventType event_type, const std::stri
       break;
     case ButtonEventType::LONG_PRESS:
       this->long_press_trigger_.trigger(button_id, label);
+      break;
+    case ButtonEventType::DOUBLE_LONG_PRESS:
+      this->double_long_press_trigger_.trigger(button_id, label);
       break;
     case ButtonEventType::LONG_RELEASE:
       this->long_release_trigger_.trigger(button_id, label);
@@ -209,6 +214,8 @@ ButtonEventType ButtonHandler::map_state_to_event_(int state) const {
       return ButtonEventType::LONG_PRESS;
     case 2:
       return ButtonEventType::SINGLE;
+    case 3:
+      return ButtonEventType::DOUBLE_LONG_PRESS;
     case 4:
       return ButtonEventType::DOUBLE;
     default:
@@ -270,9 +277,6 @@ void ButtonHandler::process_button_groups_(uint32_t now_ms) {
       std::sort(addresses.begin(), addresses.end());
 
       auto event_type = this->map_state_to_event_(state);
-      if (addresses.size() > 1) {
-        event_type = ButtonEventType::COMBO;
-      }
       const auto combo = button->resolve_combo_label(addresses);
 
       ESP_LOGI(TAG, "Button '%s' event state=%d combo=%s", button->button_id().c_str(), state, combo.c_str());
